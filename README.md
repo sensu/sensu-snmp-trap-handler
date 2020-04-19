@@ -24,9 +24,13 @@ SNMP traps.
 
 ## Files
 
+The necessary MIB files are in the mibs directory.
+
 ## Usage examples
 
 ```
+Sensu SNMP Trap Handler
+
 Usage:
   sensu-snmp-trap-handler [flags]
   sensu-snmp-trap-handler [command]
@@ -47,8 +51,8 @@ Use "sensu-snmp-trap-handler [command] --help" for more information about a comm
 ```
 
 ## Configuration
-
-### Asset registration
+### Sensu Go
+#### Asset registration
 
 [Sensu Assets][4] are the best way to make use of this plugin. If you're not using an asset, please
 consider doing so! If you're using sensuctl 5.13 with Sensu Backend 5.13 or later, you can use the
@@ -60,7 +64,7 @@ sensuctl asset add nixwiz/sensu-snmp-trap-handler
 
 If you're using an earlier version of sensuctl, you can find the asset on the [Bonsai Asset Index][3].
 
-### Handler definition
+#### Handler definition
 
 ```yml
 ---
@@ -70,18 +74,21 @@ metadata:
   name: sensu-snmp-trap-handler
   namespace: default
 spec:
-  command: sensu-snmp-trap-handler --example example_arg
+  command: sensu-snmp-trap-handler --host snmp-manager.example.com
   type: pipe
+  filters:
+  - is_incident
+  - not_silenced
   runtime_assets:
   - nixwiz/sensu-snmp-trap-handler
 ```
 
-### Annotations
+#### Annotations
 
 All arguments for this handler are tunable on a per entity or check basis based on annotations.  The
 annotations keyspace for this handler is `sensu.io/plugins/sensu-snmp-trap-handler/config`.
 
-#### Examples
+##### Examples
 
 To change the host argument for a particular check, for that checks's metadata add the following:
 
@@ -90,9 +97,13 @@ type: CheckConfig
 api_version: core/v2
 metadata:
   annotations:
-    sensu.io/plugins/sensu-snmp-trap-handler/config/host: "snmp-manager.example.com"
+    sensu.io/plugins/sensu-snmp-trap-handler/config/host: "snmp-manager2.example.com"
 [...]
 ```
+
+### Sensu Core
+
+N/A
 
 ## Installation from source
 
@@ -107,6 +118,8 @@ go build
 ```
 
 ## Additional notes
+
+N/A
 
 ## Contributing
 
