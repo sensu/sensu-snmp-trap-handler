@@ -1,6 +1,7 @@
 [![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/nixwiz/sensu-snmp-trap-handler)
 ![Go Test](https://github.com/nixwiz/sensu-snmp-trap-handler/workflows/Go%20Test/badge.svg)
 ![goreleaser](https://github.com/nixwiz/sensu-snmp-trap-handler/workflows/goreleaser/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nixwiz/sensu-snmp-trap-handler)](https://goreportcard.com/report/github.com/nixwiz/sensu-snmp-trap-handler)
 
 # sensu-snmp-trap-handler
 
@@ -82,14 +83,14 @@ annotations keyspace for this handler is `sensu.io/plugins/sensu-snmp-trap-handl
 
 #### Examples
 
-To change the example argument for a particular check, for that checks's metadata add the following:
+To change the host argument for a particular check, for that checks's metadata add the following:
 
 ```yml
 type: CheckConfig
 api_version: core/v2
 metadata:
   annotations:
-    sensu.io/plugins/sensu-snmp-trap-handler/config/example-argument: "Example change"
+    sensu.io/plugins/sensu-snmp-trap-handler/config/host: "snmp-manager.example.com"
 [...]
 ```
 
