@@ -42,3 +42,4 @@ archives:
       - LICENSE
       - README.md
       - CHANGELOG.md
+      - mibs/*
