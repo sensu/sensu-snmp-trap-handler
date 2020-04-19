@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	// ValidSNMPVerions contains the supported SNMP versions
+	// ValidSNMPVersions contains the supported SNMP versions
 	ValidSNMPVersions = []string{"1", "2", "2c"}
 
 	plugin = Config{
