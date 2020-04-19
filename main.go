@@ -104,7 +104,7 @@ func checkArgs(_ *types.Event) error {
 }
 
 func executeHandler(event *types.Event) error {
-	var checkStatus uint32
+	var checkStatus int
 	snmp.Default.Target = plugin.Host
 	snmp.Default.Port = uint16(plugin.Port)
 	snmp.Default.Community = plugin.Community
@@ -137,7 +137,7 @@ func executeHandler(event *types.Event) error {
 	if event.Check.Status > 3 {
 		checkStatus = 3
 	} else {
-		checkStatus = event.Check.Status
+		checkStatus = int(event.Check.Status)
 	}
 
 	trap := snmp.SnmpTrap{
@@ -170,7 +170,7 @@ func executeHandler(event *types.Event) error {
 			{
 				Name:  eventEntryOID + ".5",
 				Type:  snmp.Integer,
-				Value: int(checkStatus),
+				Value: checkStatus,
 			},
 			{
 				Name:  eventEntryOID + ".6",
