@@ -23,12 +23,12 @@ type Config struct {
 }
 
 const (
-	// The Sensu Enterprise PEN
+	// SensuEnterprisePEN is the Sensu Enterprise PEN
 	SensuEnterprisePEN = "1.3.6.1.4.1.45717"
 )
 
 var (
-	// Support SNMP versions
+	// ValidSNMPVerions contains the supported SNMP versions
 	ValidSNMPVersions = []string{"1", "2", "2c"}
 
 	plugin = Config{
