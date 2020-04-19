@@ -23,10 +23,12 @@ type Config struct {
 }
 
 const (
+	// The Sensu Enterprise PEN
 	SensuEnterprisePEN = "1.3.6.1.4.1.45717"
 )
 
 var (
+	// Support SNMP versions
 	ValidSNMPVersions = []string{"1", "2", "2c"}
 
 	plugin = Config{
@@ -38,7 +40,7 @@ var (
 	}
 
 	options = []*sensu.PluginConfigOption{
-		&sensu.PluginConfigOption{
+		{
 			Path:      "community",
 			Env:       "SNMP_COMMUNITY",
 			Argument:  "community",
@@ -47,7 +49,7 @@ var (
 			Usage:     "The SNMP Community string to use when sending traps",
 			Value:     &plugin.Community,
 		},
-		&sensu.PluginConfigOption{
+		{
 			Path:      "host",
 			Env:       "SNMP_HOST",
 			Argument:  "host",
@@ -56,7 +58,7 @@ var (
 			Usage:     "The SNMP manager host address",
 			Value:     &plugin.Host,
 		},
-		&sensu.PluginConfigOption{
+		{
 			Path:      "port",
 			Env:       "SNMP_PORT",
 			Argument:  "port",
@@ -65,7 +67,7 @@ var (
 			Usage:     "The SNMP manager trap port (UDP)",
 			Value:     &plugin.Port,
 		},
-		&sensu.PluginConfigOption{
+		{
 			Path:      "version",
 			Env:       "SNMP_VERSION",
 			Argument:  "version",
@@ -74,7 +76,7 @@ var (
 			Usage:     "The SNMP version to use (1,2,2c)",
 			Value:     &plugin.Version,
 		},
-		&sensu.PluginConfigOption{
+		{
 			Path:      "varbind-trim",
 			Env:       "SNMP_VARBIND_TRIM",
 			Argument:  "varbind-trim",
@@ -102,7 +104,7 @@ func checkArgs(_ *types.Event) error {
 }
 
 func executeHandler(event *types.Event) error {
-	var check_status uint32
+	var checkStatus uint32
 	snmp.Default.Target = plugin.Host
 	snmp.Default.Port = uint16(plugin.Port)
 	snmp.Default.Community = plugin.Community
@@ -117,12 +119,15 @@ func executeHandler(event *types.Event) error {
 
 	err := snmp.Default.Connect()
 	if err != nil {
-		log.Fatalf("Connect() err: %v", err)
+		return fmt.Errorf("Connect() err: %v", err)
 	}
 	defer snmp.Default.Conn.Close()
 
-	event_entry_oid := fmt.Sprintf("%s.1.1.1", SensuEnterprisePEN)
-	client_address, err := getClientIP(event)
+	eventEntryOID := fmt.Sprintf("%s.1.1.1", SensuEnterprisePEN)
+	clientAddress, err := getClientIP(event)
+	if err != nil {
+		return fmt.Errorf("getClientIP() err: %v", err)
+	}
 	message := formatMessage(event)
 	action := map[string]int{
 		"failing":  0,
@@ -130,9 +135,9 @@ func executeHandler(event *types.Event) error {
 		"flapping": 2,
 	}
 	if event.Check.Status > 3 {
-		check_status = 3
+		checkStatus = 3
 	} else {
-		check_status = event.Check.Status
+		checkStatus = event.Check.Status
 	}
 
 	trap := snmp.SnmpTrap{
@@ -143,54 +148,54 @@ func executeHandler(event *types.Event) error {
 				Value: SensuEnterprisePEN + ".1.0",
 			},
 			{
-				Name:  event_entry_oid + ".1",
+				Name:  eventEntryOID + ".1",
 				Type:  snmp.OctetString,
 				Value: fmt.Sprintf("%s/%s", event.Entity.Name, event.Check.Name),
 			},
 			{
-				Name:  event_entry_oid + ".2",
+				Name:  eventEntryOID + ".2",
 				Type:  snmp.OctetString,
 				Value: message,
 			},
 			{
-				Name:  event_entry_oid + ".3",
+				Name:  eventEntryOID + ".3",
 				Type:  snmp.OctetString,
 				Value: event.Entity.Name,
 			},
 			{
-				Name:  event_entry_oid + ".4",
+				Name:  eventEntryOID + ".4",
 				Type:  snmp.OctetString,
 				Value: event.Check.Name,
 			},
 			{
-				Name:  event_entry_oid + ".5",
+				Name:  eventEntryOID + ".5",
 				Type:  snmp.Integer,
-				Value: int(check_status),
+				Value: int(checkStatus),
 			},
 			{
-				Name:  event_entry_oid + ".6",
+				Name:  eventEntryOID + ".6",
 				Type:  snmp.OctetString,
 				Value: trimOutput(event.Check.Output),
 			},
 			{
-				Name:  event_entry_oid + ".7",
+				Name:  eventEntryOID + ".7",
 				Type:  snmp.Integer,
 				Value: int(action[event.Check.State]),
 			},
 			{
-				Name:  event_entry_oid + ".8",
+				Name:  eventEntryOID + ".8",
 				Type:  snmp.Integer,
 				Value: int(event.Check.Executed),
 			},
 			{
-				Name:  event_entry_oid + ".9",
+				Name:  eventEntryOID + ".9",
 				Type:  snmp.Integer,
 				Value: int(event.Check.Occurrences),
 			},
 			{
-				Name:  event_entry_oid + ".10",
+				Name:  eventEntryOID + ".10",
 				Type:  snmp.OctetString,
-				Value: client_address,
+				Value: clientAddress,
 			},
 		},
 	}
@@ -248,9 +253,8 @@ func trimOutput(output string) string {
 
 	if len(a) > plugin.VarbindTrim {
 		return a[0:plugin.VarbindTrim] + "..."
-	} else {
-		return a
 	}
+	return a
 }
 
 func getAgentIP() (string, error) {
