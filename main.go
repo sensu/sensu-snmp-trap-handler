@@ -29,7 +29,7 @@ const (
 
 var (
 	// ValidSNMPVersions contains the supported SNMP versions
-	ValidSNMPVersions = []string{"1", "2", "2c"}
+	ValidSNMPVersions = []string{"1", "2", "2c", "3"}
 
 	plugin = Config{
 		PluginConfig: sensu.PluginConfig{
@@ -73,7 +73,7 @@ var (
 			Argument:  "version",
 			Shorthand: "v",
 			Default:   "2",
-			Usage:     "The SNMP version to use (1,2,2c)",
+			Usage:     "The SNMP version to use (1,2,2c,3)",
 			Value:     &plugin.Version,
 		},
 		{
@@ -115,6 +115,11 @@ func executeHandler(event *types.Event) error {
 		snmp.Default.Version = snmp.Version1
 	case "2", "2c":
 		snmp.Default.Version = snmp.Version2c
+	case "3":
+		snmp.Default.Version = snmp.Version3
+		snmp.Default.SecurityModel = snmp.UserSecurityModel
+		snmp.Default.SecurityParameters = &snmp.UsmSecurityParameters{UserName: "noAuthNoPrivUser"}
+		snmp.Default.MsgFlags = snmp.NoAuthNoPriv
 	}
 
 	err := snmp.Default.Connect()
