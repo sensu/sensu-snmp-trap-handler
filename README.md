@@ -40,12 +40,14 @@ Available Commands:
   version     Print the version number of this plugin
 
 Flags:
-  -c, --community string   The SNMP Community string to use when sending traps (default "public")
-  -h, --help               help for sensu-snmp-trap-handler
-  -H, --host string        The SNMP manager host address (default "127.0.0.1")
-  -p, --port int           The SNMP manager trap port (UDP) (default 162)
-  -t, --varbind-trim int   The SNMP trap varbind value trim length (default 100)
-  -v, --version string     The SNMP version to use (1,2,2c) (default "2")
+  -c, --community string          The SNMP Community string to use when sending traps (default "public")
+  -h, --help                      help for sensu-snmp-trap-handler
+  -H, --host string               The SNMP manager host address (default "127.0.0.1")
+  -p, --port int                  The SNMP manager trap port (UDP) (default 162)
+  -t, --varbind-trim int          The SNMP trap varbind value trim length (default 100)
+  -v, --version string            The SNMP version to use (1,2,2c) (default "2")
+  -m, --message-template string   The template for the SNMP message (default "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}")
+
 
 Use "sensu-snmp-trap-handler [command] --help" for more information about a command.
 ```
