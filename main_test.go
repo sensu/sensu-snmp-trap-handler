@@ -35,8 +35,10 @@ func TestFormatMessage(t *testing.T) {
 	event.Check.State = "passing"
 	event.Check.Output = "Check Output"
 	plugin.VarbindTrim = 100
-	expectedString := formatMessage(event)
-	assert.Equal(expectedString, "RESOLVED - entity1/check1 : Check Output")
+	plugin.MessageTemplate = "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}"
+	expectedString, err := formatMessage(event)
+	assert.NoError(err)
+	assert.Equal(expectedString, "passing - entity1/check1 : Check Output")
 }
 
 func TestTrimOutput(t *testing.T) {

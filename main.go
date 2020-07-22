@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sensu-community/sensu-plugin-sdk/sensu"
+	"github.com/sensu-community/sensu-plugin-sdk/templates"
 	"github.com/sensu/sensu-go/types"
 	snmp "github.com/soniah/gosnmp"
 )
@@ -15,11 +16,12 @@ import (
 // Config represents the handler plugin config.
 type Config struct {
 	sensu.PluginConfig
-	Community   string
-	Host        string
-	Port        int
-	Version     string
-	VarbindTrim int
+	Community       string
+	Host            string
+	Port            int
+	Version         string
+	VarbindTrim     int
+	MessageTemplate string
 }
 
 const (
@@ -85,6 +87,15 @@ var (
 			Usage:     "The SNMP trap varbind value trim length",
 			Value:     &plugin.VarbindTrim,
 		},
+		{
+			Path:      "message-template",
+			Env:       "SNMP_MESSAGE_TEMPLATE",
+			Argument:  "message-template",
+			Shorthand: "m",
+			Default:   "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}",
+			Usage:     "The template for the SNMP message",
+			Value:     &plugin.MessageTemplate,
+		},
 	}
 )
 
@@ -96,6 +107,9 @@ func main() {
 func checkArgs(_ *types.Event) error {
 	if len(plugin.Host) == 0 {
 		return fmt.Errorf("--host or SNMP_HOST environment variable is required")
+	}
+	if len(plugin.MessageTemplate) == 0 {
+		return fmt.Errorf("--message-template or SNMP_MESSAGE_TEMPLATE environment variable is required")
 	}
 	if !contains(ValidSNMPVersions, plugin.Version) {
 		return fmt.Errorf("Invalid SNMP version, %s, specified", plugin.Version)
@@ -128,7 +142,10 @@ func executeHandler(event *types.Event) error {
 	if err != nil {
 		return fmt.Errorf("getClientIP() err: %v", err)
 	}
-	message := formatMessage(event)
+	message, err := formatMessage(event)
+	if err != nil {
+		return fmt.Errorf("formatMessage error: %v", err)
+	}
 	action := map[string]int{
 		"failing":  0,
 		"passing":  1,
@@ -236,16 +253,13 @@ func getClientIP(event *types.Event) (string, error) {
 	return "", fmt.Errorf("failed to get client IP from entity")
 }
 
-func formatMessage(event *types.Event) string {
-	var action string
-
-	if event.Check.State == "passing" {
-		action = "RESOLVED"
-	} else {
-		action = "ALERT"
+func formatMessage(event *types.Event) (string, error) {
+	message, err := templates.EvalTemplate("message", plugin.MessageTemplate, event)
+	if err != nil {
+		return "", fmt.Errorf("failed to format message: %v", err)
 	}
 
-	return fmt.Sprintf("%s - %s/%s : %s", action, event.Entity.Name, event.Check.Name, trimOutput(event.Check.Output))
+	return trimOutput(message), nil
 }
 
 func trimOutput(output string) string {
