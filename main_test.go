@@ -17,6 +17,7 @@ func TestCheckArgs(t *testing.T) {
 	event := corev2.FixtureEvent("entity1", "check1")
 	plugin.Version = "2"
 	plugin.Host = "localhost"
+	plugin.MessageTemplate = "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}"
 	assert.NoError(checkArgs(event))
 	plugin.Version = "99"
 	assert.Error(checkArgs(event))
