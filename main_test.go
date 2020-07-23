@@ -17,6 +17,7 @@ func TestCheckArgs(t *testing.T) {
 	event := corev2.FixtureEvent("entity1", "check1")
 	plugin.Version = "2"
 	plugin.Host = "localhost"
+	plugin.MessageTemplate = "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}"
 	assert.NoError(checkArgs(event))
 	plugin.Version = "99"
 	assert.Error(checkArgs(event))
@@ -35,8 +36,10 @@ func TestFormatMessage(t *testing.T) {
 	event.Check.State = "passing"
 	event.Check.Output = "Check Output"
 	plugin.VarbindTrim = 100
-	expectedString := formatMessage(event)
-	assert.Equal(expectedString, "RESOLVED - entity1/check1 : Check Output")
+	plugin.MessageTemplate = "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}"
+	expectedString, err := formatMessage(event)
+	assert.NoError(err)
+	assert.Equal(expectedString, "passing - entity1/check1 : Check Output")
 }
 
 func TestTrimOutput(t *testing.T) {

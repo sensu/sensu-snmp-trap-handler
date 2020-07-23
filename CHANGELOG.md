@@ -7,6 +7,9 @@ Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Changed
+- Changed message from static format to template
+
 ## [0.1.0] - 2020-04-19
 
 ### Added
