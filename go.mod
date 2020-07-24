@@ -1,4 +1,4 @@
-module github.com/nixwiz/sensu-snmp-trap-handler
+module github.com/sensu/sensu-snmp-trap-handler
 
 go 1.13
 

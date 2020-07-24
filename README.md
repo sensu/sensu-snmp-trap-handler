@@ -1,7 +1,7 @@
-[![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/nixwiz/sensu-snmp-trap-handler)
-![Go Test](https://github.com/nixwiz/sensu-snmp-trap-handler/workflows/Go%20Test/badge.svg)
-![goreleaser](https://github.com/nixwiz/sensu-snmp-trap-handler/workflows/goreleaser/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nixwiz/sensu-snmp-trap-handler)](https://goreportcard.com/report/github.com/nixwiz/sensu-snmp-trap-handler)
+[![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/sensu/sensu-snmp-trap-handler)
+![Go Test](https://github.com/sensu/sensu-snmp-trap-handler/workflows/Go%20Test/badge.svg)
+![goreleaser](https://github.com/sensu/sensu-snmp-trap-handler/workflows/goreleaser/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sensu/sensu-snmp-trap-handler)](https://goreportcard.com/report/github.com/sensu/sensu-snmp-trap-handler)
 
 # sensu-snmp-trap-handler
 
@@ -61,7 +61,7 @@ consider doing so! If you're using sensuctl 5.13 with Sensu Backend 5.13 or late
 following command to add the asset:
 
 ```
-sensuctl asset add nixwiz/sensu-snmp-trap-handler
+sensuctl asset add sensu/sensu-snmp-trap-handler
 ```
 
 If you're using an earlier version of sensuctl, you can find the asset on the [Bonsai Asset Index][3].
@@ -82,7 +82,7 @@ spec:
   - is_incident
   - not_silenced
   runtime_assets:
-  - nixwiz/sensu-snmp-trap-handler
+  - sensu/sensu-snmp-trap-handler
 ```
 
 #### Annotations
