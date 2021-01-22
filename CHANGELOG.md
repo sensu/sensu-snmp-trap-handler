@@ -7,6 +7,9 @@ Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Changed
+- Added links to the MIB files in README
+
 ## [0.2.1] - 2020-07-22
 ### Changed
 - Clean up following transfer
