@@ -8,6 +8,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Files](#files)
+  - [MIBs](#mibs)
 - [Usage examples](#usage-examples)
 - [Configuration](#configuration)
   - [Asset registration](#asset-registration)
@@ -24,7 +25,21 @@ SNMP traps.
 
 ## Files
 
-The necessary MIB files are in the mibs directory.
+### MIBs
+
+The necessary MIB files are in the [mibs directory](https://github.com/sensu/sensu-snmp-trap-handler/tree/master/mibs) and in the release assets.
+
+#### SNMPv1 MIBs
+
+* [RFC-1212-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/RFC-1212-MIB.txt)
+* [RFC-1215-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/RFC-1215-MIB.txt)
+* [SENSU-ENTERPRISE-V1-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/SENSU-ENTERPRISE-V1-MIB.txt)
+
+#### SNMPv2 MIBs
+
+* [SENSU-ENTERPRISE-ROOT-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/SENSU-ENTERPRISE-ROOT-MIB.txt)
+* [SENSU-ENTERPRISE-NOTIFY-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/SENSU-ENTERPRISE-NOTIFY-MIB.txt)
+
 
 ## Usage examples
 
@@ -102,10 +117,6 @@ metadata:
     sensu.io/plugins/sensu-snmp-trap-handler/config/host: "snmp-manager2.example.com"
 [...]
 ```
-
-### Sensu Core
-
-N/A
 
 ## Installation from source
 
