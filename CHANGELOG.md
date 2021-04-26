@@ -7,7 +7,10 @@ Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+## [0.2.2] - 20201-04-26
+
 ### Changed
+- Works with proxy entity, no longer requires entity ip address to exist
 - Added links to the MIB files in README
 
 ## [0.2.1] - 2020-07-24
