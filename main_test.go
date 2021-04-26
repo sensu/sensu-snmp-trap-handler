@@ -27,6 +27,14 @@ func TestGetClientIP(t *testing.T) {
 	assert := assert.New(t)
 	event := corev2.FixtureEvent("entity1", "check1")
 	clientAddress, err := getClientIP(event)
+	assert.NoError(err)
+	assert.Equal(clientAddress, "127.0.0.1")
+	event.Entity.System.Network.Interfaces[0].Name = "lo"
+	clientAddress, err = getClientIP(event)
+	assert.Error(err)
+	assert.Equal(clientAddress, "failed to get client IP from entity")
+	event.Entity.System.Network.Interfaces[0].Addresses[0] = "127.0.0.1/8"
+	clientAddress, err = getClientIP(event)
 	assert.Error(err)
 	assert.Equal(clientAddress, "failed to get client IP from entity")
 	networkInterface := corev2.NetworkInterface{

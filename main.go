@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sensu-community/sensu-plugin-sdk/sensu"
-	"github.com/sensu-community/sensu-plugin-sdk/templates"
 	"github.com/sensu/sensu-go/types"
+	"github.com/sensu/sensu-plugin-sdk/sensu"
+	"github.com/sensu/sensu-plugin-sdk/templates"
 	snmp "github.com/soniah/gosnmp"
 )
 
