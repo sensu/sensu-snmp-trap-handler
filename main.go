@@ -138,10 +138,7 @@ func executeHandler(event *types.Event) error {
 	defer snmp.Default.Conn.Close()
 
 	eventEntryOID := fmt.Sprintf("%s.1.1.1", SensuEnterprisePEN)
-	clientAddress, err := getClientIP(event)
-	if err != nil {
-		return fmt.Errorf("getClientIP() err: %v", err)
-	}
+	clientAddress, _ := getClientIP(event)
 	message, err := formatMessage(event)
 	if err != nil {
 		return fmt.Errorf("formatMessage error: %v", err)
@@ -250,7 +247,7 @@ func getClientIP(event *types.Event) (string, error) {
 		}
 		return strings.Split(a.Addresses[0], "/")[0], nil
 	}
-	return "", fmt.Errorf("failed to get client IP from entity")
+	return "failed to get client IP from entity", fmt.Errorf("failed to get client IP from entity")
 }
 
 func formatMessage(event *types.Event) (string, error) {
