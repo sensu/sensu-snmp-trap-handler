@@ -33,6 +33,7 @@ func TestGetClientIP(t *testing.T) {
 	clientAddress, err = getClientIP(event)
 	assert.Error(err)
 	assert.Equal(clientAddress, "failed to get client IP from entity")
+	event.Entity.System.Network.Interfaces[0].Name = "eth0"
 	event.Entity.System.Network.Interfaces[0].Addresses[0] = "127.0.0.1/8"
 	clientAddress, err = getClientIP(event)
 	assert.Error(err)
