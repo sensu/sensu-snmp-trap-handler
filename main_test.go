@@ -23,6 +23,35 @@ func TestCheckArgs(t *testing.T) {
 	assert.Error(checkArgs(event))
 }
 
+func TestGetClientIP(t *testing.T) {
+	assert := assert.New(t)
+	event := corev2.FixtureEvent("entity1", "check1")
+	clientAddress, err := getClientIP(event)
+	assert.NoError(err)
+	assert.Equal(clientAddress, "127.0.0.1")
+	event.Entity.System.Network.Interfaces[0].Name = "lo"
+	clientAddress, err = getClientIP(event)
+	assert.Error(err)
+	assert.Equal(clientAddress, "failed to get client IP from entity")
+	event.Entity.System.Network.Interfaces[0].Name = "eth0"
+	event.Entity.System.Network.Interfaces[0].Addresses[0] = "127.0.0.1/8"
+	clientAddress, err = getClientIP(event)
+	assert.Error(err)
+	assert.Equal(clientAddress, "failed to get client IP from entity")
+	networkInterface := corev2.NetworkInterface{
+		Name: "eth1",
+		MAC:  "attack of the",
+		Addresses: []string{
+			"10.10.10.1",
+		},
+	}
+	assert.Equal(networkInterface.Addresses[0], "10.10.10.1")
+	event.Entity.System.Network.Interfaces = append(event.Entity.System.Network.Interfaces, networkInterface)
+	clientAddress, err = getClientIP(event)
+	assert.NoError(err)
+	assert.Equal(clientAddress, "10.10.10.1")
+}
+
 func TestContains(t *testing.T) {
 	assert := assert.New(t)
 	a := []string{"here", "there", "everywhere"}
