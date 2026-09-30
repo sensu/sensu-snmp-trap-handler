@@ -7,6 +7,17 @@ Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 
+### Added
+- SNMPv3 support (USM authentication/privacy) via new `--security-level`, `--username`,
+  `--auth-protocol`, `--auth-passphrase`, `--priv-protocol`, `--priv-passphrase`,
+  `--context-name`, and `--engine-id` flags/annotations/env vars. SNMPv1/v2c behavior is
+  unchanged.
+
+### Changed
+- Updated SNMP library dependency from the archived `github.com/soniah/gosnmp` to its
+  canonical successor `github.com/gosnmp/gosnmp` v1.45.0.
+- Bumped minimum Go version to 1.24 (required by the updated gosnmp dependency).
+
 ## [0.2.2] - 20201-04-26
 
 ### Changed

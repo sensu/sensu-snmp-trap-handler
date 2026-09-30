@@ -1,16 +1,17 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strings"
 
+	snmp "github.com/gosnmp/gosnmp"
 	"github.com/sensu/sensu-go/types"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
 	"github.com/sensu/sensu-plugin-sdk/templates"
-	snmp "github.com/soniah/gosnmp"
 )
 
 // Config represents the handler plugin config.
@@ -22,6 +23,14 @@ type Config struct {
 	Version         string
 	VarbindTrim     int
 	MessageTemplate string
+	SecurityLevel   string
+	Username        string
+	AuthProtocol    string
+	AuthPassphrase  string
+	PrivProtocol    string
+	PrivPassphrase  string
+	ContextName     string
+	EngineID        string
 }
 
 const (
@@ -31,7 +40,16 @@ const (
 
 var (
 	// ValidSNMPVersions contains the supported SNMP versions
-	ValidSNMPVersions = []string{"1", "2", "2c"}
+	ValidSNMPVersions = []string{"1", "2", "2c", "3"}
+
+	// ValidSecurityLevels contains the supported SNMPv3 security levels
+	ValidSecurityLevels = []string{"noAuthNoPriv", "authNoPriv", "authPriv"}
+
+	// ValidAuthProtocols contains the supported SNMPv3 authentication protocols
+	ValidAuthProtocols = []string{"MD5", "SHA"}
+
+	// ValidPrivProtocols contains the supported SNMPv3 privacy protocols
+	ValidPrivProtocols = []string{"DES", "AES"}
 
 	plugin = Config{
 		PluginConfig: sensu.PluginConfig{
@@ -75,7 +93,7 @@ var (
 			Argument:  "version",
 			Shorthand: "v",
 			Default:   "2",
-			Usage:     "The SNMP version to use (1,2,2c)",
+			Usage:     "The SNMP version to use (1,2,2c,3)",
 			Value:     &plugin.Version,
 		},
 		{
@@ -96,6 +114,72 @@ var (
 			Usage:     "The template for the SNMP message",
 			Value:     &plugin.MessageTemplate,
 		},
+		{
+			Path:     "security-level",
+			Env:      "SNMP_SECURITY_LEVEL",
+			Argument: "security-level",
+			Default:  "authPriv",
+			Usage:    "The SNMPv3 security level to use (noAuthNoPriv, authNoPriv, authPriv)",
+			Value:    &plugin.SecurityLevel,
+		},
+		{
+			Path:     "username",
+			Env:      "SNMP_USERNAME",
+			Argument: "username",
+			Default:  "",
+			Usage:    "The SNMPv3 security username",
+			Value:    &plugin.Username,
+		},
+		{
+			Path:     "auth-protocol",
+			Env:      "SNMP_AUTH_PROTOCOL",
+			Argument: "auth-protocol",
+			Default:  "SHA",
+			Usage:    "The SNMPv3 authentication protocol to use (MD5, SHA)",
+			Value:    &plugin.AuthProtocol,
+		},
+		{
+			Path:     "auth-passphrase",
+			Env:      "SNMP_AUTH_PASSPHRASE",
+			Argument: "auth-passphrase",
+			Default:  "",
+			Usage:    "The SNMPv3 authentication passphrase",
+			Value:    &plugin.AuthPassphrase,
+			Secret:   true,
+		},
+		{
+			Path:     "priv-protocol",
+			Env:      "SNMP_PRIV_PROTOCOL",
+			Argument: "priv-protocol",
+			Default:  "AES",
+			Usage:    "The SNMPv3 privacy protocol to use (DES, AES)",
+			Value:    &plugin.PrivProtocol,
+		},
+		{
+			Path:     "priv-passphrase",
+			Env:      "SNMP_PRIV_PASSPHRASE",
+			Argument: "priv-passphrase",
+			Default:  "",
+			Usage:    "The SNMPv3 privacy passphrase",
+			Value:    &plugin.PrivPassphrase,
+			Secret:   true,
+		},
+		{
+			Path:     "context-name",
+			Env:      "SNMP_CONTEXT_NAME",
+			Argument: "context-name",
+			Default:  "",
+			Usage:    "The SNMPv3 context name",
+			Value:    &plugin.ContextName,
+		},
+		{
+			Path:     "engine-id",
+			Env:      "SNMP_ENGINE_ID",
+			Argument: "engine-id",
+			Default:  "",
+			Usage:    "The SNMPv3 authoritative engine ID (hex string, e.g. 800012fe03) of this handler; required for SNMPv3 since engine discovery cannot be performed for traps",
+			Value:    &plugin.EngineID,
+		},
 	}
 )
 
@@ -114,7 +198,112 @@ func checkArgs(_ *types.Event) error {
 	if !contains(ValidSNMPVersions, plugin.Version) {
 		return fmt.Errorf("Invalid SNMP version, %s, specified", plugin.Version)
 	}
+	if plugin.Version == "3" {
+		return checkSNMPv3Args()
+	}
 	return nil
+}
+
+func checkSNMPv3Args() error {
+	if !contains(ValidSecurityLevels, plugin.SecurityLevel) {
+		return fmt.Errorf("Invalid SNMPv3 security level, %s, specified", plugin.SecurityLevel)
+	}
+	if len(plugin.Username) == 0 {
+		return fmt.Errorf("--username or SNMP_USERNAME environment variable is required for SNMPv3")
+	}
+	if len(plugin.EngineID) == 0 {
+		return fmt.Errorf("--engine-id or SNMP_ENGINE_ID environment variable is required for SNMPv3")
+	}
+	if _, err := decodeEngineID(plugin.EngineID); err != nil {
+		return err
+	}
+	if plugin.SecurityLevel == "authNoPriv" || plugin.SecurityLevel == "authPriv" {
+		if !contains(ValidAuthProtocols, plugin.AuthProtocol) {
+			return fmt.Errorf("Invalid SNMPv3 auth protocol, %s, specified", plugin.AuthProtocol)
+		}
+		if len(plugin.AuthPassphrase) == 0 {
+			return fmt.Errorf("--auth-passphrase or SNMP_AUTH_PASSPHRASE environment variable is required for security level %s", plugin.SecurityLevel)
+		}
+	}
+	if plugin.SecurityLevel == "authPriv" {
+		if !contains(ValidPrivProtocols, plugin.PrivProtocol) {
+			return fmt.Errorf("Invalid SNMPv3 priv protocol, %s, specified", plugin.PrivProtocol)
+		}
+		if len(plugin.PrivPassphrase) == 0 {
+			return fmt.Errorf("--priv-passphrase or SNMP_PRIV_PASSPHRASE environment variable is required for security level authPriv")
+		}
+	}
+	return nil
+}
+
+// configureSNMPv3 sets up the USM security parameters for an SNMPv3 trap.
+//
+// The AuthoritativeEngineID must be provided explicitly (--engine-id) rather
+// than discovered, since this handler is the notification originator (not an
+// agent being polled) and SendTrap never waits for a reply to negotiate one.
+func configureSNMPv3() error {
+	engineID, err := decodeEngineID(plugin.EngineID)
+	if err != nil {
+		return err
+	}
+
+	snmp.Default.Version = snmp.Version3
+	snmp.Default.SecurityModel = snmp.UserSecurityModel
+	snmp.Default.MsgFlags = mapMsgFlags(plugin.SecurityLevel)
+	snmp.Default.ContextName = plugin.ContextName
+	snmp.Default.SecurityParameters = &snmp.UsmSecurityParameters{
+		UserName:                 plugin.Username,
+		AuthenticationProtocol:   mapAuthProtocol(plugin.AuthProtocol),
+		AuthenticationPassphrase: plugin.AuthPassphrase,
+		PrivacyProtocol:          mapPrivProtocol(plugin.PrivProtocol),
+		PrivacyPassphrase:        plugin.PrivPassphrase,
+		AuthoritativeEngineID:    engineID,
+	}
+	return nil
+}
+
+// decodeEngineID converts a hex-encoded engine ID (optionally 0x-prefixed) into
+// the raw byte string gosnmp expects for AuthoritativeEngineID/ContextEngineID.
+func decodeEngineID(engineID string) (string, error) {
+	trimmed := strings.TrimPrefix(strings.ToLower(engineID), "0x")
+	decoded, err := hex.DecodeString(trimmed)
+	if err != nil {
+		return "", fmt.Errorf("invalid --engine-id value, must be a hex string: %v", err)
+	}
+	return string(decoded), nil
+}
+
+func mapAuthProtocol(protocol string) snmp.SnmpV3AuthProtocol {
+	switch protocol {
+	case "MD5":
+		return snmp.MD5
+	case "SHA":
+		return snmp.SHA
+	default:
+		return snmp.NoAuth
+	}
+}
+
+func mapPrivProtocol(protocol string) snmp.SnmpV3PrivProtocol {
+	switch protocol {
+	case "DES":
+		return snmp.DES
+	case "AES":
+		return snmp.AES
+	default:
+		return snmp.NoPriv
+	}
+}
+
+func mapMsgFlags(securityLevel string) snmp.SnmpV3MsgFlags {
+	switch securityLevel {
+	case "authNoPriv":
+		return snmp.AuthNoPriv
+	case "authPriv":
+		return snmp.AuthPriv
+	default:
+		return snmp.NoAuthNoPriv
+	}
 }
 
 func executeHandler(event *types.Event) error {
@@ -122,13 +311,17 @@ func executeHandler(event *types.Event) error {
 	snmp.Default.Target = plugin.Host
 	snmp.Default.Port = uint16(plugin.Port)
 	snmp.Default.Community = plugin.Community
-	snmp.Default.Logger = log.New(os.Stdout, "", 0)
+	snmp.Default.Logger = snmp.NewLogger(log.New(os.Stdout, "", 0))
 
 	switch plugin.Version {
 	case "1":
 		snmp.Default.Version = snmp.Version1
 	case "2", "2c":
 		snmp.Default.Version = snmp.Version2c
+	case "3":
+		if err := configureSNMPv3(); err != nil {
+			return err
+		}
 	}
 
 	err := snmp.Default.Connect()

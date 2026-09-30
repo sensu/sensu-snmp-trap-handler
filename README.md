@@ -14,6 +14,7 @@
   - [Asset registration](#asset-registration)
   - [Handler definition](#handler-definition)
   - [Annotations](#annotations)
+  - [SNMPv3](#snmpv3)
 - [Installation from source](#installation-from-source)
 - [Additional notes](#additional-notes)
 - [Contributing](#contributing)
@@ -40,6 +41,9 @@ The necessary MIB files are in the [mibs directory](https://github.com/sensu/sen
 * [SENSU-ENTERPRISE-ROOT-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/SENSU-ENTERPRISE-ROOT-MIB.txt)
 * [SENSU-ENTERPRISE-NOTIFY-MIB.txt](https://raw.githubusercontent.com/sensu/sensu-snmp-trap-handler/master/mibs/SENSU-ENTERPRISE-NOTIFY-MIB.txt)
 
+SNMPv3 traps reuse the same SNMPv2 MIBs above; SNMPv3 only changes the message security layer
+(USM authentication/encryption), not the notification object structure.
+
 
 ## Usage examples
 
@@ -55,13 +59,21 @@ Available Commands:
   version     Print the version number of this plugin
 
 Flags:
+      --auth-passphrase string    The SNMPv3 authentication passphrase
+      --auth-protocol string      The SNMPv3 authentication protocol to use (MD5, SHA) (default "SHA")
   -c, --community string          The SNMP Community string to use when sending traps (default "public")
+      --context-name string       The SNMPv3 context name
+      --engine-id string          The SNMPv3 authoritative engine ID (hex string, e.g. 800012fe03) of this handler; required for SNMPv3 since engine discovery cannot be performed for traps
   -h, --help                      help for sensu-snmp-trap-handler
   -H, --host string               The SNMP manager host address (default "127.0.0.1")
-  -p, --port int                  The SNMP manager trap port (UDP) (default 162)
-  -t, --varbind-trim int          The SNMP trap varbind value trim length in characters (default 100)
-  -v, --version string            The SNMP version to use (1,2,2c) (default "2")
   -m, --message-template string   The template for the SNMP message (default "{{.Check.State}} - {{.Entity.Name}}/{{.Check.Name}} : {{.Check.Output}}")
+  -p, --port int                  The SNMP manager trap port (UDP) (default 162)
+      --priv-passphrase string    The SNMPv3 privacy passphrase
+      --priv-protocol string      The SNMPv3 privacy protocol to use (DES, AES) (default "AES")
+      --security-level string     The SNMPv3 security level to use (noAuthNoPriv, authNoPriv, authPriv) (default "authPriv")
+  -t, --varbind-trim int          The SNMP trap varbind value trim length in characters (default 100)
+      --username string           The SNMPv3 security username
+  -v, --version string            The SNMP version to use (1,2,2c,3) (default "2")
 
 
 Use "sensu-snmp-trap-handler [command] --help" for more information about a command.
@@ -116,6 +128,50 @@ metadata:
   annotations:
     sensu.io/plugins/sensu-snmp-trap-handler/config/host: "snmp-manager2.example.com"
 [...]
+```
+
+#### SNMPv3
+
+Set `--version 3` to send traps using SNMPv3 with the User-based Security Model (USM). The relevant
+flags/annotations/env vars are:
+
+* `--security-level` / `SNMP_SECURITY_LEVEL` - `noAuthNoPriv`, `authNoPriv`, or `authPriv` (default `authPriv`)
+* `--username` / `SNMP_USERNAME` - the USM user name (required)
+* `--auth-protocol` / `SNMP_AUTH_PROTOCOL` - `MD5` or `SHA` (default `SHA`, used when security level is `authNoPriv` or `authPriv`)
+* `--auth-passphrase` / `SNMP_AUTH_PASSPHRASE` - the authentication passphrase (required for `authNoPriv`/`authPriv`)
+* `--priv-protocol` / `SNMP_PRIV_PROTOCOL` - `DES` or `AES` (default `AES`, used when security level is `authPriv`)
+* `--priv-passphrase` / `SNMP_PRIV_PASSPHRASE` - the privacy passphrase (required for `authPriv`)
+* `--context-name` / `SNMP_CONTEXT_NAME` - optional SNMPv3 context name
+* `--engine-id` / `SNMP_ENGINE_ID` - **required** hex-encoded authoritative engine ID (e.g. `800012fe03`, optionally `0x`-prefixed)
+
+**Note on `--engine-id`:** for SNMPv3 notifications, this handler (the trap sender) is the
+authoritative SNMP engine, not the receiving manager. Because traps don't wait for a reply,
+gosnmp cannot perform its usual engine ID discovery handshake, so the engine ID must be supplied
+explicitly. Your SNMP manager must be pre-configured with a USM user matching this same
+`--engine-id`, `--username`, and passphrases, otherwise it will be unable to authenticate/decrypt
+the trap.
+
+```yml
+---
+type: Handler
+api_version: core/v2
+metadata:
+  name: sensu-snmp-trap-handler
+  namespace: default
+spec:
+  command: >-
+    sensu-snmp-trap-handler --host snmp-manager.example.com --version 3
+    --security-level authPriv --username sensu --auth-protocol SHA
+    --priv-protocol AES --engine-id 800012fe03
+  type: pipe
+  filters:
+  - is_incident
+  - not_silenced
+  runtime_assets:
+  - sensu/sensu-snmp-trap-handler
+  env_vars:
+  - SNMP_AUTH_PASSPHRASE=secret
+  - SNMP_PRIV_PASSPHRASE=secret
 ```
 
 ## Installation from source
