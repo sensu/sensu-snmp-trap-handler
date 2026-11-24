@@ -3,9 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net"
-	"os"
 	"strings"
 
 	snmp "github.com/gosnmp/gosnmp"
@@ -36,6 +34,10 @@ type Config struct {
 const (
 	// SensuEnterprisePEN is the Sensu Enterprise PEN
 	SensuEnterprisePEN = "1.3.6.1.4.1.45717"
+
+	// RFC 3411 section 5: an SnmpEngineID is an OCTET STRING of 5 to 32 bytes
+	minEngineIDLength = 5
+	maxEngineIDLength = 32
 )
 
 var (
@@ -246,6 +248,14 @@ func configureSNMPv3() error {
 	if err != nil {
 		return err
 	}
+	authProtocol := snmp.NoAuth
+	privacyProtocol := snmp.NoPriv
+	if plugin.SecurityLevel == "authNoPriv" || plugin.SecurityLevel == "authPriv" {
+		authProtocol = mapAuthProtocol(plugin.AuthProtocol)
+	}
+	if plugin.SecurityLevel == "authPriv" {
+		privacyProtocol = mapPrivProtocol(plugin.PrivProtocol)
+	}
 
 	snmp.Default.Version = snmp.Version3
 	snmp.Default.SecurityModel = snmp.UserSecurityModel
@@ -253,9 +263,9 @@ func configureSNMPv3() error {
 	snmp.Default.ContextName = plugin.ContextName
 	snmp.Default.SecurityParameters = &snmp.UsmSecurityParameters{
 		UserName:                 plugin.Username,
-		AuthenticationProtocol:   mapAuthProtocol(plugin.AuthProtocol),
+		AuthenticationProtocol:   authProtocol,
 		AuthenticationPassphrase: plugin.AuthPassphrase,
-		PrivacyProtocol:          mapPrivProtocol(plugin.PrivProtocol),
+		PrivacyProtocol:          privacyProtocol,
 		PrivacyPassphrase:        plugin.PrivPassphrase,
 		AuthoritativeEngineID:    engineID,
 	}
@@ -270,7 +280,20 @@ func decodeEngineID(engineID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid --engine-id value, must be a hex string: %v", err)
 	}
+	if len(decoded) < minEngineIDLength || len(decoded) > maxEngineIDLength {
+		return "", fmt.Errorf("invalid --engine-id value, must be %d to %d bytes (%d to %d hex characters) per RFC 3411, got %d bytes",
+			minEngineIDLength, maxEngineIDLength, minEngineIDLength*2, maxEngineIDLength*2, len(decoded))
+	}
 	return string(decoded), nil
+}
+
+// normalizeHost strips the square brackets from a bracketed IPv6 literal such
+// as [fd00::2], since the address is joined with the port by the SNMP library.
+func normalizeHost(host string) string {
+	if len(host) > 1 && strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		return host[1 : len(host)-1]
+	}
+	return host
 }
 
 func mapAuthProtocol(protocol string) snmp.SnmpV3AuthProtocol {
@@ -308,10 +331,9 @@ func mapMsgFlags(securityLevel string) snmp.SnmpV3MsgFlags {
 
 func executeHandler(event *types.Event) error {
 	var checkStatus int
-	snmp.Default.Target = plugin.Host
+	snmp.Default.Target = normalizeHost(plugin.Host)
 	snmp.Default.Port = uint16(plugin.Port)
 	snmp.Default.Community = plugin.Community
-	snmp.Default.Logger = snmp.NewLogger(log.New(os.Stdout, "", 0))
 
 	switch plugin.Version {
 	case "1":
@@ -414,12 +436,10 @@ func executeHandler(event *types.Event) error {
 			return fmt.Errorf("failed to lookup my own IP address")
 		}
 		trap.AgentAddress = myip
-		fmt.Println(myip)
 	}
 
-	_, err = snmp.Default.SendTrap(trap)
-	if err != nil {
-		log.Fatalf("SendTrap() err: %v", err)
+	if _, err = snmp.Default.SendTrap(trap); err != nil {
+		return fmt.Errorf("SendTrap() err: %v", err)
 	}
 	return nil
 }
@@ -435,7 +455,7 @@ func contains(arr []string, str string) bool {
 
 func getClientIP(event *types.Event) (string, error) {
 	for _, a := range event.Entity.System.Network.Interfaces {
-		if a.Name == "lo" || contains(a.Addresses, "127.0.0.1/8") {
+		if a.Name == "lo" || len(a.Addresses) == 0 || contains(a.Addresses, "127.0.0.1/8") {
 			continue
 		}
 		return strings.Split(a.Addresses[0], "/")[0], nil
